@@ -15,6 +15,7 @@ import {
   SPECIES,
   STAT_NAMES,
 } from './types.js'
+import { getLocale } from './i18n.js'
 
 // ── Mulberry32 PRNG ──────────────────────────────────────────────────────────
 // Tiny seeded PRNG. Good enough for picking ducks.
@@ -84,50 +85,6 @@ function rollStats(
 
 const SALT = 'friend-2026-401'
 
-// ── Name generation ──────────────────────────────────────────────────────────
-
-const NAME_PREFIXES = [
-  'Tiny', 'Sir', 'Captain', 'Lord', 'Professor', 'Doctor',
-  'Big', 'Little', 'Mighty', 'Grumpy', 'Sleepy', 'Speedy',
-  'Baron', 'Elder', 'Baby', 'Iron', 'Shadow', 'Cosmic',
-]
-
-const NAME_SUFFIXES_BY_SPECIES: Record<Species, string[]> = {
-  duck: ['Quack', 'Waddles', 'Ducky', 'Bill', 'Pond'],
-  goose: ['Honk', 'Hiss', 'Feathers', 'Goosey', 'Gander'],
-  blob: ['Blob', 'Squish', 'Goo', 'Drip', 'Ooze'],
-  cat: ['Whiskers', 'Paws', 'Mittens', 'Shadow', 'Purr'],
-  dragon: ['Flame', 'Scales', 'Smoke', 'Ember', 'Fang'],
-  octopus: ['Tentacle', 'Ink', 'Waves', 'Sucker', 'Deep'],
-  owl: ['Hoot', 'Wing', 'Feather', 'Talon', 'Night'],
-  penguin: ['Waddle', 'Ice', 'Tux', 'Frost', 'Fish'],
-  turtle: ['Shell', 'Slow', 'Reef', 'Ancient', 'Zen'],
-  snail: ['Shell', 'Trail', 'Slime', 'Garden', 'Pace'],
-  ghost: ['Boo', 'Shade', 'Mist', 'Echo', 'Whisper'],
-  axolotl: ['Gills', 'Smile', 'Regen', 'Mud', 'Pink'],
-  capybara: ['Chill', 'Bath', 'Orange', 'Friend', 'Zen'],
-  cactus: ['Spiky', 'Desert', 'Bloom', 'Sand', 'Prickle'],
-  robot: ['Beep', 'Circuit', 'Byte', 'Gear', 'Rust'],
-  rabbit: ['Hop', 'Carrot', 'Burrow', 'Ear', 'Cotton'],
-  mushroom: ['Spore', 'Cap', 'Fungus', 'Forest', 'Myco'],
-  chonk: ['Chub', 'Fluff', 'Round', 'Meatball', 'Unit'],
-}
-
-// ── Soul names pool (deterministic from inspirationSeed) ─────────────────────
-
-const PERSONALITY_TRAITS = [
-  'curious and easily distracted',
-  'perpetually unimpressed',
-  'secretly affectionate but hides it',
-  'convinced it is the main character',
-  'anxious but brave',
-  'calm like a zen master',
-  'chaotic and proud of it',
-  'wise beyond its tiny body',
-  'grumpy on the outside, soft inside',
-  'always judging, always watching',
-]
-
 // ── Core roll logic ──────────────────────────────────────────────────────────
 
 export type Roll = {
@@ -137,6 +94,7 @@ export type Roll = {
 }
 
 function rollFrom(rng: () => number): Roll {
+  const locale = getLocale()
   const rarity = rollRarity(rng)
   const species = pick(rng, SPECIES)
   const eye = pick(rng, EYES)
@@ -145,13 +103,14 @@ function rollFrom(rng: () => number): Roll {
   const stats = rollStats(rng, rarity)
   const inspirationSeed = Math.floor(rng() * 1e9)
 
-  // Generate name from seed
-  const prefix = pick(rng, NAME_PREFIXES)
-  const suffix = pick(rng, NAME_SUFFIXES_BY_SPECIES[species])
+  // Generate name from locale's name pool
+  const prefix = pick(rng, locale.namePrefixes)
+  const suffixes = locale.nameSuffixes[species] ?? ['?']
+  const suffix = pick(rng, suffixes)
   const name = `${prefix} ${suffix}`
 
-  // Generate personality
-  const personality = pick(rng, PERSONALITY_TRAITS)
+  // Generate personality from locale
+  const personality = pick(rng, locale.personalities)
 
   return {
     bones: { rarity, species, eye, hat, shiny, stats },
@@ -164,7 +123,7 @@ function rollFrom(rng: () => number): Roll {
 
 /**
  * Roll a companion deterministically from a seed string (e.g. user ID).
- * Same input always produces the same companion.
+ * Same input always produces the same companion. Result depends on active locale.
  */
 export function roll(seed: string): Roll {
   return rollFrom(mulberry32(hashString(seed + SALT)))
