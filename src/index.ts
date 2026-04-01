@@ -32,3 +32,11 @@ export {
   renderFace,
   spriteFrameCount,
 } from './sprites.js'
+
+export {
+  setLocale,
+  getLocale,
+  availableLocales,
+  registerLocale,
+  type BuddyLocale,
+} from './i18n.js'
